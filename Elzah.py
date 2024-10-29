@@ -209,12 +209,16 @@ class WarungSotoFinancial:
         print("Generating weekly summary")
         weekly_summaries = []
         current_week = []
-        totals = {'meals': {}, 'drinks': {}, 'sales': 0, 'expenses': 0, 'profit': 0, 'spice_cost': 0}
+        totals = {'meals': {}, 'drinks': {}, 'sales': 0, 'expenses': 0, 'profit': 0, 'spice_cost': 0, 'total_soto': 0, 'total_gorengan': 0}
 
         for day in sales_data:
             if day['day'] != 'Minggu' and day['total_sales'] != 'Tutup':
                 current_week.append(day)
                 for meal, count in day['meals'].items():
+                    if 'Soto' in meal:
+                        totals['total_soto'] += count
+                    elif 'Gorengan' in meal:
+                        totals['total_gorengan'] += count
                     totals['meals'][meal] = totals['meals'].get(meal, 0) + count
                 for drink, count in day['drinks'].items():
                     totals['drinks'][drink] = totals['drinks'].get(drink, 0) + count
@@ -226,6 +230,8 @@ class WarungSotoFinancial:
                 weekly_summaries.append({
                     'start_date': current_week[0]['date'],
                     'end_date': day['date'],
+                    'total_soto': totals['total_soto'],
+                    'total_gorengan': totals['total_gorengan'],
                     'total_meals': totals['meals'],
                     'total_drinks': totals['drinks'],
                     'total_sales': totals['sales'],
@@ -233,12 +239,11 @@ class WarungSotoFinancial:
                     'total_profit': totals['profit'],
                     'weekly_spice_cost': totals['spice_cost']
                 })
-                totals = {'meals': {}, 'drinks': {}, 'sales': 0, 'expenses': 0, 'profit': 0, 'spice_cost': 0}
+                totals = {'meals': {}, 'drinks': {}, 'sales': 0, 'expenses': 0, 'profit': 0, 'spice_cost': 0, 'total_soto': 0, 'total_gorengan': 0}
                 current_week = []
 
         print(f"Generated {len(weekly_summaries)} weekly summaries")
         return weekly_summaries
-
 
 class ExcelExporter:
     @staticmethod
@@ -304,7 +309,7 @@ class ExcelExporter:
             ws.append([
                 week['start_date'], week['end_date'], week['total_soto'], week['total_gorengan'],
                 "{:,.0f}".format(week['total_sales']), "{:,.0f}".format(week['total_expenses']),
-                "{:,.0f}".format(week['total_profit']), "{:,.0f}".format(week['weekly_spice_cost'])  # Spice cost for the week
+                "{:,.0f}".format(week['total_profit']), "{:,.0f}".format(week['weekly_spice_cost'])
             ])
 
         ExcelExporter._format_sheet(ws, headers)
@@ -317,8 +322,16 @@ class ExcelExporter:
         total_monthly_sales = sum(day['total_sales'] for day in sales_data if day['total_sales'] != 'Tutup')
         total_monthly_expenses = sum(monthly_expenses.values())
         monthly_profit = total_monthly_sales - total_monthly_expenses
-        total_soto_portions = sum(day['soto_portions'] for day in sales_data if day['soto_portions'] != 'Tutup')
-        total_gorengan_portions = sum(day['gorengan_portions'] for day in sales_data if day['gorengan_portions'] != 'Tutup')
+
+        total_soto_portions = 0
+        total_gorengan_portions = 0
+        for day in sales_data:
+            if day['total_sales'] != 'Tutup':
+                for meal, count in day['meals'].items():
+                    if 'Soto' in meal:
+                        total_soto_portions += count
+                    elif 'Gorengan' in meal:
+                        total_gorengan_portions += count
 
         summary_data = [
             ["Ringkasan Bulanan", "Jumlah"],
